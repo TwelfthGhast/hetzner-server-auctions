@@ -4,4 +4,4 @@ import pandas as pd
 pd.set_option('display.max_colwidth', 100)
 
 obj = HetznerAuction()
-print(obj.filter(ram_max=128, ram_min=16))
+print(obj.ram(max=128, min=16).ssd(min=100).ecc(True).sort(how="price_asc"))

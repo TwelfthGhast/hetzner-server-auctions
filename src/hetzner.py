@@ -81,7 +81,7 @@ class HetznerAuction():
             df.loc[index, "expected_price"] = ev
             df.loc[index, "value"] = ev / float(row["price"])
 
-        df.sort_values("value", ascending=False, inplace=True)
+        df.sort_values("value", ascending=False)
         df["price"] = df.price.astype(float)
 
         self._data = df.reset_index(drop=True)
@@ -93,18 +93,56 @@ class HetznerAuction():
     @data.setter
     def data(self, df: pd.DataFrame):
         self._data = df
-    
-    def filter(self, *args, **kwargs):
-        return self.filter_ram(**kwargs)
 
-    def filter_ram(self, *args, **kwargs):
+    def ram(self, **kwargs):
         df = self.data
-        if "ram_max" in kwargs:
-            df = df[df.ram <= kwargs["ram_max"]]
-        if "ram_min" in kwargs:
-            df = df[df.ram >= kwargs["ram_min"]]
+        if "max" in kwargs:
+            df = df[df.ram <= kwargs["max"]]
+        if "min" in kwargs:
+            df = df[df.ram >= kwargs["min"]]
         self.data = df.reset_index(drop=True)
         return self
     
+    def ssd(self, **kwargs):
+        df = self.data
+        if "max" in kwargs:
+            df = df[df.ssd <= kwargs["max"]]
+        if "min" in kwargs:
+            df = df[df.ssd >= kwargs["min"]]
+        self.data = df.reset_index(drop=True)
+        return self
+    
+    def ecc(self, is_ecc: bool=None):
+        if is_ecc is None:
+            print("HetznerAuction.is_ecc() expects a positional argument of True or False")
+            return self
+        df = self.data
+        if is_ecc:
+            df = df[df.is_ecc == 1]
+        else:
+            df = df[df.is_ecc == 0]
+        self.data = df.reset_index(drop=True)
+        return self
+
+    def sort(self, how: str="value_asc"):
+        """DataFrame Sort Method
+
+        Parameters:
+          - how (str): one of the following: value_asc, value_desc, price_asc, price_desc
+        """
+        if how not in ["value_asc", "value_desc", "price_asc", "price_desc"]:
+            how = "value_asc"
+        df = self.data
+        if how == "value_asc":
+            df = df.sort_values("value")
+        elif how == "value_desc":
+            df = df.sort_values("value", ascending=False)
+        elif how == "price_asc":
+            df = df.sort_values("price")
+        elif how == "price_desc":
+            df = df.sort_values("price", ascending=False)
+        self.data = df.reset_index(drop=True)
+        return self
+
     def __str__(self):
         return str(self.data)
