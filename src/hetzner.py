@@ -27,22 +27,25 @@ class HetznerAuction():
             for item in server["description"]:
                 if item.split()[1] == "HDD":
                     qty = int(item.split()[0][:-1])
-                    modifier = 1 
-                    if item.split()[4] == "TB":
-                        modifier = 1024
-                    space = float(item.split()[3].replace(",", "."))
-                    hdd_size += qty*modifier * space
+                    data = item.split()
+                    modifier = 1
+                    space = 0
+                    for i, val in enumerate(data):
+                        if val in ["GB", "TB"]:
+                            if val == "TB":
+                                modifier = 1024    
+                            space = float(data[i - 1].replace(",", "."))
+                    hdd_size += qty * modifier * space
                 elif item.split()[1] == "SSD":
+                    data = item.split()
                     qty = int(item.split()[0][:-1])
-                    modifier = 1 
-                    try:
-                        space = float(item.split()[3].replace(",", "."))
-                        if item.split()[4] == "TB":
-                            modifier = 1024
-                    except ValueError:
-                        space = float(item.split()[4].replace(",", "."))
-                        if item.split()[5] == "TB":
-                            modifier = 1024
+                    modifier = 1
+                    space = 0
+                    for i, val in enumerate(data):
+                        if val in ["TB", "GB"]:
+                            if val == "TB":
+                                modifier = 1024    
+                            space = float(data[i - 1].replace(",", "."))
                     ssd_size += qty*modifier * space
             cpu = server["cpu"]
             description = ", ".join(server["description"])
@@ -81,41 +84,27 @@ class HetznerAuction():
         df.sort_values("value", ascending=False, inplace=True)
         df["price"] = df.price.astype(float)
 
-        self._data = AuctionData(df.reset_index(drop=True))
+        self._data = df.reset_index(drop=True)
     
     @property
     def data(self):
         return self._data
     
-    def __str__(self):
-        return str(self._data)
-
-class AuctionData():
-    def __init__(self, df):
+    @data.setter
+    def data(self, df: pd.DataFrame):
         self._data = df
-
-    @property
-    def data(self):
-        return self._data.copy()
     
-    def filter(self,
-        ram_min: int = 0, ram_max: int = MAX_INT,
-        is_ecc: bool = None,
-        storage_min: int = 0, storage_max: int = MAX_INT,
-        ssd_min: int = 0, ssd_max: int = MAX_INT,
-        price_min: float = 0.0, price_max: float = float(MAX_INT)
-    ):
+    def filter(self, *args, **kwargs):
+        return self.filter_ram(**kwargs)
+
+    def filter_ram(self, *args, **kwargs):
         df = self.data
-        df = df[df.ram >= ram_min][df.ram <= ram_max]
-        if is_ecc is not None:
-            if is_ecc:
-                df = df[df.is_ecc == 1]
-            else:
-                df = df[df.is_ecc == 0]
-        df = df[(df.hdd + df.ssd) >= storage_min][(df.hdd + df.ssd) <= storage_max]
-        df = df[df.ssd >= ssd_min][df.ssd <= ssd_max]
-        df = df[df.price >= price_min][df.price <= price_max]
-        return AuctionData(df.reset_index(drop=True))
+        if "ram_max" in kwargs:
+            df = df[df.ram <= kwargs["ram_max"]]
+        if "ram_min" in kwargs:
+            df = df[df.ram >= kwargs["ram_min"]]
+        self.data = df.reset_index(drop=True)
+        return self
     
     def __str__(self):
-        return str(self._data.copy())
+        return str(self.data)
